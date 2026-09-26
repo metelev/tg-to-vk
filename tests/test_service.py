@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tg_to_vk import Store, extract_post, publish
+from tg_to_vk import PermanentError, Store, extract_post, publish
 
 
 class ServiceTests(unittest.TestCase):
@@ -58,6 +58,14 @@ class ServiceTests(unittest.TestCase):
                     {"message_id": 2, "video": {"file_id": "v", "file_size": 5}}]
         self.assertEqual(publish(vk, "album:x", messages), 17)
         self.assertEqual(vk.calls, [("Hi", ["photo1_p", "video1_v"], "tg-to-vk:album:x")])
+
+    def test_oversized_video_is_rejected_before_upload(self):
+        class Fake:
+            def upload(self, kind, file_id):
+                raise AssertionError("upload must not be called")
+        with self.assertRaises(PermanentError):
+            publish(Fake(), "message:1", [{"message_id": 1, "video": {
+                "file_id": "too-large", "file_size": 21 * 1024 * 1024}}])
 
     def test_done_job_is_not_republished(self):
         self.store.ingest([self.update(1, 1, text="Hi")], now=100)
