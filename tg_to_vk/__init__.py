@@ -3,6 +3,12 @@
 import json
 import sqlite3
 
+MAX_FILE = 20 * 1024 * 1024
+
+
+class PermanentError(Exception):
+    pass
+
 
 class Store:
     def __init__(self, path, chat_id):
@@ -80,5 +86,7 @@ def extract_post(messages):
 
 def publish(vk, key, messages):
     text, media = extract_post(messages)
+    if any(size > MAX_FILE for _, _, size in media):
+        raise PermanentError("Telegram file exceeds Bot API download limit (20 MB)")
     attachments = [vk.upload(kind, file_id) for kind, file_id, _ in media]
     return vk.post(text, attachments, "tg-to-vk:" + key)
