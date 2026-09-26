@@ -1,23 +1,15 @@
 import argparse
 import logging
-import os
 import tempfile
 import time
 from pathlib import Path
 
 import requests
 
-from . import Store, publish
+from . import MAX_FILE, PermanentError, Store, publish
 
 
 LOG = logging.getLogger("tg_to_vk")
-MAX_FILE = 20 * 1024 * 1024
-
-
-class PermanentError(Exception):
-    pass
-
-
 class ApiError(Exception):
     pass
 
