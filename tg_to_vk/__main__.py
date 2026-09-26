@@ -71,17 +71,18 @@ class Telegram:
 
 
 class VK:
-    def __init__(self, token, group_id, telegram, version="5.199"):
+    def __init__(self, token, group_id, telegram, version="5.199", post_token=None):
         self.token = token
+        self.post_token = post_token or token
         self.group_id = group_id
         self.version = version
         self.telegram = telegram
         self.session = requests.Session()
 
-    def call(self, method, **params):
+    def call(self, method, *, access_token=None, **params):
         try:
             response = self.session.post("https://api.vk.com/method/" + method,
-                                         data={**params, "access_token": self.token, "v": self.version},
+                                         data={**params, "access_token": access_token or self.token, "v": self.version},
                                          timeout=(15, 45))
             response.raise_for_status()
             data = response.json()
@@ -125,7 +126,7 @@ class VK:
         return data
 
     def post(self, text, attachments, guid):
-        result = self.call("wall.post", owner_id=-self.group_id, from_group=1,
+        result = self.call("wall.post", access_token=self.post_token, owner_id=-self.group_id, from_group=1,
                            message=text, attachments=",".join(attachments), guid=guid)
         return result["post_id"]
 
@@ -136,7 +137,8 @@ def run(config):
     data_path = Path(config.get("DATABASE_PATH", "data/state.sqlite3"))
     data_path.parent.mkdir(parents=True, exist_ok=True)
     tg = Telegram(config["TELEGRAM_BOT_TOKEN"], config.get("TELEGRAM_PROXY_URL"))
-    vk = VK(config["VK_USER_TOKEN"], group_id, tg, config.get("VK_API_VERSION", "5.199"))
+    vk = VK(config["VK_USER_TOKEN"], group_id, tg, config.get("VK_API_VERSION", "5.199"),
+            config.get("VK_GROUP_TOKEN"))
     store = Store(data_path, chat_id)
     LOG.info("Started for Telegram chat %s and VK group %s", chat_id, group_id)
     try:
@@ -177,7 +179,7 @@ def main():
         bot = tg.call("getMe")
         chat = tg.call("getChat", chat_id=config["TELEGRAM_CHAT_ID"])
         vk = VK(config["VK_USER_TOKEN"], abs(int(config["VK_GROUP_ID"])), tg,
-                config.get("VK_API_VERSION", "5.199"))
+                config.get("VK_API_VERSION", "5.199"), config.get("VK_GROUP_TOKEN"))
         vk.call("users.get")
         print(f"Connected to Telegram bot @{bot['username']}, channel {chat['id']} and VK API; no post sent")
     else:
