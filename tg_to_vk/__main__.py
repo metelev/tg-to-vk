@@ -100,9 +100,15 @@ class VK:
             path = Path(temp) / ("media.jpg" if kind == "photo" else "media.mp4")
             self.telegram.download(file_id, path)
             if kind == "photo":
-                server = self.call("photos.getWallUploadServer", group_id=self.group_id)
-                with path.open("rb") as source:
-                    uploaded = self._upload(server["upload_url"], "photo", source)
+                for attempt in range(3):
+                    server = self.call("photos.getWallUploadServer", group_id=self.group_id)
+                    with path.open("rb") as source:
+                        uploaded = self._upload(server["upload_url"], "photo", source)
+                    if uploaded.get("photo"):
+                        break
+                    LOG.warning("VK returned an empty photo upload, attempt %s/3", attempt + 1)
+                else:
+                    raise ApiError("VK photo upload returned empty photo after 3 attempts")
                 saved = self.call("photos.saveWallPhoto", group_id=self.group_id,
                                   photo=uploaded["photo"], server=uploaded["server"], hash=uploaded["hash"])
                 photo = saved[0]
