@@ -1,0 +1,21 @@
+[Unit]
+Description=Telegram to VK cross posting
+After=network-online.target hiddify-paper.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tg-to-vk
+Group=tg-to-vk
+WorkingDirectory=/opt/projects/tg-to-vk
+ExecStart=/opt/projects/tg-to-vk/.venv/bin/python -m tg_to_vk run
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/projects/tg-to-vk/data
+
+[Install]
+WantedBy=multi-user.target
