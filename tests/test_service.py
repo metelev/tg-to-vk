@@ -1,8 +1,10 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 from tg_to_vk import PermanentError, Store, extract_post, publish
+from tg_to_vk.__main__ import VK
 
 
 class ServiceTests(unittest.TestCase):
@@ -73,6 +75,18 @@ class ServiceTests(unittest.TestCase):
         self.store.done(key, 17)
         self.store.ingest([self.update(1, 1, text="Hi")], now=101)
         self.assertEqual(self.store.ready(now=200), [])
+
+    def test_wall_post_uses_community_token_while_photo_uses_user_token(self):
+        vk = VK("user-token", 42, None, post_token="community-token")
+        response = Mock()
+        response.json.return_value = {"response": {"post_id": 17}}
+        vk.session.post = Mock(return_value=response)
+
+        vk.call("photos.getWallUploadServer", group_id=42)
+        self.assertEqual(vk.session.post.call_args.kwargs["data"]["access_token"], "user-token")
+
+        self.assertEqual(vk.post("Hi", [], "guid-1"), 17)
+        self.assertEqual(vk.session.post.call_args.kwargs["data"]["access_token"], "community-token")
 
 
 if __name__ == "__main__":
