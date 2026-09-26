@@ -88,6 +88,27 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(vk.post("Hi", [], "guid-1"), 17)
         self.assertEqual(vk.session.post.call_args.kwargs["data"]["access_token"], "community-token")
 
+    def test_empty_vk_photo_upload_is_retried_before_save(self):
+        class FakeTelegram:
+            def download(self, file_id, path):
+                path.write_bytes(b"\xff\xd8\xff")
+
+        vk = VK("user-token", 42, FakeTelegram())
+        vk.call = Mock(side_effect=[
+            {"upload_url": "https://example.com/upload"},
+            {"upload_url": "https://example.com/upload"},
+            [{"owner_id": -42, "id": 9}],
+        ])
+        vk._upload = Mock(side_effect=[
+            {"photo": "", "server": 1, "hash": "a"},
+            {"photo": "valid-photo", "server": 1, "hash": "b"},
+        ])
+
+        self.assertEqual(vk.upload("photo", "file-id"), "photo-42_9")
+        self.assertEqual(vk._upload.call_count, 2)
+        self.assertEqual(vk.call.call_args.args[0], "photos.saveWallPhoto")
+        self.assertEqual(vk.call.call_args.kwargs["photo"], "valid-photo")
+
 
 if __name__ == "__main__":
     unittest.main()
