@@ -1,6 +1,6 @@
 [Unit]
 Description=Telegram to VK cross posting
-After=network-online.target hiddify-paper.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
